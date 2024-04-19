@@ -1,0 +1,88 @@
+name: workflow
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+  pull_request:
+    types:
+    - opened
+    branches:
+    - master
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: get code
+      uses: actions/checkout@v4
+    - name: cache dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        key: dependencies-${{hashFiles('**/package-lock.json')}}
+        path: node_modules
+    - name: install dependencies
+      if: steps.cache-deps.hit != "true"
+      run: npm ci
+    - name: lint code
+      run: npm run lint
+  test:
+    needs: ["lint"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: get code
+      uses: actions/checkout@v4
+    - name: cache dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        key: dependencies-${{hashFiles('**/package-lock.json')}}
+        path: node_modules
+    - name: install dependencies
+      if: steps.cache-deps.hit != "true"
+      run: npm ci
+    - name: run tests
+      run: npm run test
+    - name: publish report
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-report
+        path: test.json
+  build:
+    needs: ["test"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: get code
+      uses: actions/checkout@v4
+    - name: cache dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        key: dependencies-${{hashFiles('**/package-lock.json')}}
+        path: node_modules
+    - name: install dependencies
+      if: steps.cache-deps.hit != "true"
+      run: npm ci
+    - name: build app
+      run: npm run build
+    - name: upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifact
+        path: dist
+  deploy:
+    needs: ["build"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifact
+    - name: download test report artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: test-report
+    - name: list files
+      run: ls -l
+    - name: display test report artifact
+      run: cat test.json
