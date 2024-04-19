@@ -42,8 +42,11 @@ jobs:
       if: steps.cache-deps.cache-hit != 'true'
       run: npm ci
     - name: run tests
+      id: test-step
+      continue-on-error: true
       run: npm run test
     - name: publish report
+      if: steps.test-step.outcome == 'failure'
       uses: actions/upload-artifact@v4
       with:
         name: test-report
@@ -84,5 +87,3 @@ jobs:
         name: test-report
     - name: list files
       run: ls -l
-    - name: display test report artifact
-      run: cat test.json
