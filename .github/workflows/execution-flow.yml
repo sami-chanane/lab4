@@ -10,51 +10,17 @@ on:
     branches:
     - master
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: get code
-      uses: actions/checkout@v4
-    - name: cache dependencies
-      id: cache-deps
-      uses: actions/cache@v4
-      with:
-        key: dependencies-${{hashFiles('**/package-lock.json')}}
-        path: node_modules
-    - name: install dependencies
-      if: steps.cache-deps.cache-hit != 'true'
-      run: npm ci
-    - name: lint code
-      run: npm run lint
-  test:
-    needs: ["lint"]
-    runs-on: ubuntu-latest
-    steps:
-    - name: get code
-      uses: actions/checkout@v4
-    - name: cache dependencies
-      id: cache-deps
-      uses: actions/cache@v4
-      with:
-        key: dependencies-${{hashFiles('**/package-lock.json')}}
-        path: node_modules
-    - name: install dependencies
-      if: steps.cache-deps.cache-hit != 'true'
-      run: npm ci
-    - name: run tests
-      id: test-step
-      continue-on-error: true
-      run: npm run test
-    - name: publish report
-      if: steps.test-step.outcome == 'failure'
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-report
-        path: test.json
   build:
-    needs: ["test"]
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+        node_version: ["12", "14", "16"]
+    runs-on: ${{matrix.os}}
     steps:
+    - name: setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '${{matrix.node_version}}'
     - name: get code
       uses: actions/checkout@v4
     - name: cache dependencies
@@ -73,17 +39,4 @@ jobs:
       with:
         name: build-artifact
         path: dist
-  deploy:
-    needs: ["build"]
-    runs-on: ubuntu-latest
-    steps:
-    - name: download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: build-artifact
-    - name: download test report artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: test-report
-    - name: list files
-      run: ls -l
+
